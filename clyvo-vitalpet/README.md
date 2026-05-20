@@ -72,7 +72,7 @@ A API iniciará em:
 http://localhost:8080
 ```
 
-## Como executar localmente com Dockerfile, sem Docker Compose
+## Como executar localmente com Dockerfile
 
 Na raiz do projeto, execute:
 
@@ -140,21 +140,7 @@ chmod +x scripts/stop-containers-dockerfile.sh
 
 ## Como executar na Azure
 
-Antes de executar, abra o arquivo:
-
-```text
-scripts/azure-vm-deploy.sh
-```
-
-Troque:
-
-```bash
-REPO_URL="https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git"
-```
-
-pelo link real do repositório público.
-
-Depois execute:
+Execute:
 
 ```bash
 az login
@@ -184,16 +170,14 @@ H2 Web:   http://IP_PUBLICO:8082
 SSH:      ssh azureuser@IP_PUBLICO
 ```
 
-## Remoção da VM após a entrega
+## Remoção da VM 
 
-Ao final da gravação e dos testes, execute:
+Ao final dos testes, execute:
 
 ```bash
 chmod +x scripts/delete-azure-resources.sh
 ./scripts/delete-azure-resources.sh
 ```
-
-Esse passo é obrigatório para atender ao requisito de remoção da VM criada.
 
 ## Swagger
 
@@ -221,6 +205,7 @@ PUT    /api/clinicas/{id}
 DELETE /api/clinicas/{id}
 PATCH  /api/clinicas/{id}/ativar
 ```
+![Swagger](assets/Clinicas_Swagger.png)
 
 ### Tutores
 
@@ -232,6 +217,7 @@ PUT    /api/tutores/{id}
 DELETE /api/tutores/{id}
 PATCH  /api/tutores/{id}/ativar
 ```
+![Swagger](assets/Tutores_Swagger.png)
 
 ### Pets
 
@@ -243,6 +229,7 @@ PUT    /api/pets/{id}
 DELETE /api/pets/{id}
 PATCH  /api/pets/{id}/ativar
 ```
+![Swagger](assets/Pets_Swagger.png)
 
 ### Veterinários
 
@@ -254,6 +241,7 @@ PUT    /api/veterinarios/{id}
 DELETE /api/veterinarios/{id}
 PATCH  /api/veterinarios/{id}/ativar
 ```
+![Swagger](assets/Veterinario_Swagger.png)
 
 ### Consultas
 
@@ -265,6 +253,7 @@ PATCH /api/consultas/{id}
 PATCH /api/consultas/{id}/finalizar
 PATCH /api/consultas/{id}/cancelar
 ```
+![Swagger](assets/Consultas_Swagger.png)
 
 Ao finalizar uma consulta com `descricaoAcompanhamento`, o sistema cria automaticamente um acompanhamento e um alerta de retorno para 7 dias depois.
 
@@ -277,6 +266,7 @@ GET   /api/acompanhamentos?petId=1&status=ATIVO&page=0&size=10
 PATCH /api/acompanhamentos/{id}/concluir
 PATCH /api/acompanhamentos/{id}/cancelar
 ```
+![Swagger](assets/Acompanhamento_Swagger.png)
 
 ### Alertas
 
@@ -287,12 +277,217 @@ GET   /api/alertas?petId=1&status=PENDENTE&prioridade=ALTA&page=0&size=10
 PATCH /api/alertas/{id}/resolver
 PATCH /api/alertas/{id}/cancelar
 ```
+![Swagger](assets/Alertas_Swagger.png)
 
 ### Dashboard
 
 ```text
 GET /api/dashboard/resumo
 ```
+![Swagger](assets/Dashboard_Swagger.png)
+
+## Ordem recomendada para realizar os POSTs
+
+Para testar corretamente a API do **Clyvo VitalPet**, é importante seguir uma ordem lógica de cadastro, pois algumas entidades dependem de outras já existentes no banco de dados.
+
+A ordem recomendada é:
+
+---
+
+### 1. Criar uma Clínica
+
+Primeiro, cadastre uma clínica, pois o veterinário precisa estar vinculado a uma clínica existente.
+
+**Endpoint:**
+
+```http
+POST /api/clinicas
+```
+
+**Exemplo de body:**
+
+```json
+{
+  "nome": "Clínica VitalPet Paulista",
+  "endereco": "Avenida Paulista, 1000",
+  "cidade": "São Paulo",
+  "estado": "SP",
+  "cep": "01310000",
+  "telefone": "11999990000",
+  "email": "contato@vitalpet.com",
+  "cnpj": "12345678000199"
+}
+```
+![Postman](assets/Post_Clinicas_Postman.png)
+
+Após criar a clínica, guarde o `id` retornado, pois ele será usado no cadastro do veterinário.
+
+---
+
+### 2. Criar um Veterinário
+
+Depois da clínica criada, cadastre um veterinário informando o `clinicaId`.
+
+**Endpoint:**
+
+```http
+POST /api/veterinarios
+```
+
+**Exemplo de body:**
+
+```json
+{
+  "nome": "Carlos Lima",
+  "email": "carlos.lima@vitalpet.com",
+  "telefone": "11988887777",
+  "crmv": "SP-12345",
+  "especialidade": "Clínica Geral",
+  "clinicaId": 1
+}
+```
+![Postman](assets/Post_Veterinarios_Postman.png)
+
+O campo `clinicaId` deve corresponder ao ID de uma clínica já cadastrada.
+
+---
+
+### 3. Criar um Tutor
+
+Em seguida, cadastre o tutor responsável pelo pet.
+
+**Endpoint:**
+
+```http
+POST /api/tutores
+```
+
+**Exemplo de body:**
+
+```json
+{
+  "nome": "João Pereira",
+  "email": "joao.pereira@email.com",
+  "telefone": "11977776666",
+  "cpf": "12345678901",
+  "endereco": "Rua das Flores, 200",
+  "cidade": "São Paulo",
+  "estado": "SP",
+  "cep": "04000000"
+}
+```
+![Postman](assets/Post_Tutores_Postman.png)
+
+Após criar o tutor, guarde o `id` retornado, pois ele será usado no cadastro do pet.
+
+---
+
+### 4. Criar um Pet
+
+Depois de cadastrar o tutor, cadastre o pet vinculado a ele usando o campo `tutorId`.
+
+**Endpoint:**
+
+```http
+POST /api/pets
+```
+
+**Exemplo de body:**
+
+```json
+{
+  "nome": "Rex",
+  "especie": "Cachorro",
+  "raca": "Golden Retriever",
+  "dataNascimento": "2020-05-10",
+  "sexo": "MACHO",
+  "peso": 28.5,
+  "observacoes": "Pet dócil e vacinado",
+  "tutorId": 1
+}
+```
+![Postman](assets/Post_Pets_Postman.png)
+
+O campo `tutorId` deve corresponder ao ID de um tutor já cadastrado.
+
+---
+
+### 5. Criar uma Consulta
+
+Com pet e veterinário cadastrados, já é possível criar uma consulta.
+
+**Endpoint:**
+
+```http
+POST /api/consultas
+```
+
+**Exemplo de body:**
+
+```json
+{
+  "dataHora": "2026-05-25T14:30:00",
+  "tipo": "Rotina",
+  "sintomas": "Consulta preventiva",
+  "valor": 150.00,
+  "petId": 1,
+  "veterinarioId": 1
+}
+```
+![Postman](assets/Post_Consultas_Postman.png)
+
+O campo `petId` deve corresponder ao ID de um pet existente.
+
+O campo `veterinarioId` deve corresponder ao ID de um veterinário existente.
+
+---
+
+### 6. Finalizar a Consulta
+
+Após criar a consulta, é possível finalizá-la informando diagnóstico, tratamento e descrição do acompanhamento.
+
+**Endpoint:**
+
+```http
+PATCH /api/consultas/{id}/finalizar
+```
+
+**Exemplo:**
+
+```http
+PATCH /api/consultas/1/finalizar
+```
+
+**Exemplo de body:**
+
+```json
+{
+  "diagnostico": "Pet saudável, sem alterações clínicas graves",
+  "tratamento": "Manter alimentação balanceada e retorno em 7 dias",
+  "descricaoAcompanhamento": "Acompanhar alimentação, comportamento e possíveis sinais de indisposição"
+}
+```
+![Postman](assets/Patch_Consultas_Postman.png)
+
+Ao finalizar a consulta, o sistema pode gerar automaticamente um acompanhamento pós-consulta e um alerta de retorno.
+
+---
+
+## Ordem resumida
+
+```text
+1. POST /api/clinicas
+2. POST /api/veterinarios
+3. POST /api/tutores
+4. POST /api/pets
+5. POST /api/consultas
+6. PUT  /api/consultas/{id}/finalizar
+7. GET  /api/acompanhamentos
+8. GET  /api/alertas
+9. GET  /api/dashboard/resumo
+```
+
+Essa ordem deve ser seguida porque o projeto possui relacionamentos entre as entidades. Por exemplo, um veterinário depende de uma clínica, um pet depende de um tutor e uma consulta depende de um pet e de um veterinário.
 
 ## Teste rápido do CRUD
 
@@ -309,20 +504,6 @@ Na Azure, troque pelo IP público:
 BASE_URL=http://IP_PUBLICO:8080 ./scripts/run-api-tests.sh
 ```
 
-## Exemplo de payload para criar clínica
-
-```json
-{
-  "nome": "VitalPet Vila Mariana",
-  "endereco": "Rua das Flores, 100",
-  "cidade": "São Paulo",
-  "estado": "SP",
-  "cep": "04000000",
-  "telefone": "11999990000",
-  "email": "contato@vitalpet.com",
-  "cnpj": "12345678000199"
-}
-```
 
 ## Consultas no H2 Console
 
